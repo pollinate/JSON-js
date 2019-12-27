@@ -1,0 +1,19 @@
+{
+  "name": "@pollinate/json",
+  "version": "2.0.0",
+  "description": "A fork of douglascrockford/JSON-js with whitespace formatting for 3D scene, manifest, and other metadata",
+  "main": "json2.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pollinate/JSON-js.git"
+  },
+  "author": "Adam Shaylor <adam.shaylor@pollinate.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pollinate/JSON-js/issues"
+  },
+  "homepage": "https://github.com/pollinate/JSON-js"
+}

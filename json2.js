@@ -315,21 +315,39 @@ if (typeof JSON !== "object") {
 // Join all of the elements together, separated with commas, and wrap them in
 // brackets.
 
+// Pollinate: Inline most arrays
+
+                const inlineValues = !value.every(element => typeof element === 'string') ||
+                    value.length <= 4;
+
                 v = partial.length === 0
                     ? "[]"
                     : gap
                         ? (
-                            "[\n"
-                            + gap
-                            + partial.join(",\n" + gap)
-                            + "\n"
-                            + mind
+                            "["
+                            + (inlineValues ? ' ' : '\n' + gap)
+                            + (
+                                inlineValues
+                                ? (
+                                    partial.join(', ')
+                                )
+                                : (
+                                    partial.join(',\n' + gap)
+                                )
+                            )
+                            + (inlineValues ? ' ' : '\n' + mind)
                             + "]"
                         )
                         : "[" + partial.join(",") + "]";
                 gap = mind;
                 return v;
             }
+
+// Pollinate: Align object values flush left
+
+            const longestPropertyLength = Object.keys(value).reduce((accumulator, key) => {
+                return key.length > accumulator ? key.length : accumulator;
+            }, 0);
 
 // If the replacer is an array, use it to select the members to be stringified.
 
@@ -340,9 +358,10 @@ if (typeof JSON !== "object") {
                         k = rep[i];
                         v = str(k, value);
                         if (v) {
+                            const trailingPropertySpace = ' '.repeat(longestPropertyLength - k.length + 2);
                             partial.push(quote(k) + (
                                 (gap)
-                                    ? ": "
+                                    ? trailingPropertySpace + ": "
                                     : ":"
                             ) + v);
                         }
@@ -356,9 +375,10 @@ if (typeof JSON !== "object") {
                     if (Object.prototype.hasOwnProperty.call(value, k)) {
                         v = str(k, value);
                         if (v) {
+                            const trailingPropertySpace = ' '.repeat(longestPropertyLength - k.length + 2);
                             partial.push(quote(k) + (
                                 (gap)
-                                    ? ": "
+                                    ? trailingPropertySpace + ": "
                                     : ":"
                             ) + v);
                         }
@@ -380,8 +400,8 @@ if (typeof JSON !== "object") {
     }
 
 // If the JSON object does not yet have a stringify method, give it one.
-
-    if (typeof JSON.stringify !== "function") {
+    // Pollinate: Disable conditional to ensure custom formatting overrides native
+    // if (typeof JSON.stringify !== "function") {
         meta = {    // table of character substitutions
             "\b": "\\b",
             "\t": "\\t",
@@ -433,7 +453,7 @@ if (typeof JSON !== "object") {
 
             return str("", {"": value});
         };
-    }
+    // }
 
 
 // If the JSON object does not yet have a parse method, give it one.
