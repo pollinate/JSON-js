@@ -389,43 +389,48 @@ if (typeof JSON !== "object") {
                 });
             }
 
-// Pollinate: Group related properties. Note that it isn't especially
-// efficient to re-parse what was just stringified, but performance
-// is not as crucial in our particular application of stringify() as
-// it might be in general use.
+// Pollinate: Group related properties.
 
             const joinPartialWithGaps = partial => {
-                const joined = partial.reduce((accumulator, kvString, kvIndex) => {
-                    const nextKvString = partial[kvIndex + 1]
-                    if (!nextKvString) {
-                        return accumulator + kvString;
+
+// It isn't especially efficient to re-parse what was just stringified,
+// but performance is not as crucial in our particular application of
+// stringify() as it might be in general use.
+
+                const keys = partial.map(kvString => Object.keys(JSON.parse(`{${ kvString }}`))[0]);
+
+                const groupedIndices = keys.reduce((accumulator, key, partialIndex) => {
+                    const previousKey = keys[partialIndex - 1];
+                    if (!previousKey) {
+                        return accumulator.concat([ [ partialIndex ] ]);
                     }
-                    const [ k ] = Object.keys(JSON.parse(`{${ kvString }}`));
-                    const [ nextK ] = Object.keys(JSON.parse(`{${ nextKvString }}`));
-                    const nsK = k.split('.');
-                    const [ firstComponent ] = nsK;
-                    const [ firstComponentOfNext ] = nextK.split('.');
-                    const numberSuffixRegExp = /\d+$/;
-                    const [ currentNumberStr = '' ] = firstComponent.match(numberSuffixRegExp) || [];
-                    const [ nextNumberStr = '' ] = firstComponentOfNext.match(numberSuffixRegExp) || [];
-                    const appendBreak =
+                    const keyComponents = key.split('.');
+                    const previousKeyComponents = previousKey.split('.');
+                    const bothAreSimple = keyComponents.length === 1 && previousKeyComponents.length === 1;
+                    const bothShareTopLevelComponent = keyComponents[0] === previousKeyComponents[0];
+                    const groupWithPrevious = bothAreSimple || bothShareTopLevelComponent;
+                    if (groupWithPrevious) {
+                        const otherGroups = accumulator.slice(0, -1);
+                        const previousGroup = accumulator.slice(-1)[0];
+                        return [ ...otherGroups, previousGroup.concat(partialIndex) ];
+                    }
+                    return accumulator.concat([ [ partialIndex ] ]);
+                }, []);
 
-// Add breaks when going between numbered and non-numbered groups.
+                // const consolidatedGroupedIndices
 
-                        currentNumberStr.length !== nextNumberStr.length ||
+                const joinedGroups = groupedIndices.map(indexGroup =>
+                    indexGroup.reduce((accumulator, partialIndex) => {
+                        const kvString = partial[partialIndex];
+                        const isLast = partialIndex + 1 === partial.length;
+                        return isLast
+                            ? accumulator + kvString
+                            : accumulator + kvString + ',\n' + gap;
+                    }, '')
+                );
 
-// Add breaks when going between different numbered groups, checking
-// the namespace to prevent adding excessive breaks between non-
-// namespaced properties like "modelN".
-
-                        (
-                            nsK.length > 1 &&
-                            currentNumberStr !== nextNumberStr
-                        );
-                    return accumulator + kvString + `,\n${ appendBreak ? '\n' + gap : gap }`;
-                }, '');
+                const joined = joinedGroups.join('\n' + gap);
                 return `{\n${ gap + joined }\n${ mind }}`;
-                // return "{\n" + gap + partial.join(",\n" + gap) + "\n" + mind + "}";
             };
 
 // Join all of the member texts together, separated with commas,
