@@ -371,7 +371,10 @@ if (typeof JSON !== "object") {
 
 // Otherwise, iterate through all of the keys in the object.
 
-                for (k in value) {
+// Pollinate: alphabetize keys for grouping purposes
+
+                const keys = Object.keys(value);
+                keys.forEach(k => {
                     if (Object.prototype.hasOwnProperty.call(value, k)) {
                         v = str(k, value);
                         if (v) {
@@ -383,8 +386,47 @@ if (typeof JSON !== "object") {
                             ) + v);
                         }
                     }
-                }
+                });
             }
+
+// Pollinate: Group related properties. Note that it isn't especially
+// efficient to re-parse what was just stringified, but performance
+// is not as crucial in our particular application of stringify() as
+// it might be in general use.
+
+            const joinPartialWithGaps = partial => {
+                const joined = partial.reduce((accumulator, kvString, kvIndex) => {
+                    const nextKvString = partial[kvIndex + 1]
+                    if (!nextKvString) {
+                        return accumulator + kvString;
+                    }
+                    const [ k ] = Object.keys(JSON.parse(`{${ kvString }}`));
+                    const [ nextK ] = Object.keys(JSON.parse(`{${ nextKvString }}`));
+                    const nsK = k.split('.');
+                    const [ firstComponent ] = nsK;
+                    const [ firstComponentOfNext ] = nextK.split('.');
+                    const numberSuffixRegExp = /\d+$/;
+                    const [ currentNumberStr = '' ] = firstComponent.match(numberSuffixRegExp) || [];
+                    const [ nextNumberStr = '' ] = firstComponentOfNext.match(numberSuffixRegExp) || [];
+                    const appendBreak =
+
+// Add breaks when going between numbered and non-numbered groups.
+
+                        currentNumberStr.length !== nextNumberStr.length ||
+
+// Add breaks when going between different numbered groups, checking
+// the namespace to prevent adding excessive breaks between non-
+// namespaced properties like "modelN".
+
+                        (
+                            nsK.length > 1 &&
+                            currentNumberStr !== nextNumberStr
+                        );
+                    return accumulator + kvString + `,\n${ appendBreak ? '\n' + gap : gap }`;
+                }, '');
+                return `{\n${ gap + joined }\n${ mind }}`;
+                // return "{\n" + gap + partial.join(",\n" + gap) + "\n" + mind + "}";
+            };
 
 // Join all of the member texts together, separated with commas,
 // and wrap them in braces.
@@ -392,7 +434,7 @@ if (typeof JSON !== "object") {
             v = partial.length === 0
                 ? "{}"
                 : gap
-                    ? "{\n" + gap + partial.join(",\n" + gap) + "\n" + mind + "}"
+                    ? joinPartialWithGaps(partial)
                     : "{" + partial.join(",") + "}";
             gap = mind;
             return v;
